@@ -1,0 +1,94 @@
+---
+title: "Notes"
+author: "Elizabeth Roten"
+date: "4/25/2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+
+Basically don't use observe too much. 
+
+- Do not introduce reactive values for each calculated value.
+- Prefer using reactive expressions to model calculations, over using observers to set (reactive) variables 
+- Know the difference between telling Shiny to do something, and telling Shiny how to do something  
+- Use reactive expressions for calculations (no side effects). Use observers for actions (side effects).
+
+Observers demand that they do it, and do it now. They don't distinguish what actually needs to be run at a given time. 
+
+Only run a calculation **once** when the user inputs
+
+## Observers  
+
+Observers are blocks of code that perform actions. They are executed in response to changing reactive values/expressions, and they don't return a value.  
+
+They execute once at start up, and then when their input value changes.  
+
+Two different kinds.  
+
+1. Implicit: depend on **all** reactive values/expression encountered during execution
+```{r}
+observe({...})
+```
+
+2. Explicit: just depend on **specific** reactive value.expression; ignore all others (AKA event handler)
+```{r}
+observeEvent(event, {...})
+```
+
+## Reactives vs. Observers  
+
+### Reactives
+
+1. `reactive()` **can be called** and **returns a value**, like a function. Either last expression or `return()`  
+2. Its **lazy.** It doesn't execute code until somebody calls it (even if its reactive dependencies have changed). Also like a function.  
+3. Its **cached.** The fist tie its called, it executes the code and saves the resulting value. Subsequent calls can skip the execution and just return the value. This does take up memory space.    
+4. Its **reactive**. It is notified when its dependencies change. When that happens, it clears its cache and notifies its dependents.  
+
+You cannot rely on a reactive executing, because it can decide to run whenever.  
+
+```{r}
+function(input, output, session) {
+  reactive({
+    # This code will never execute!
+    cat("The value of input$x is now ", input$x, "\n")
+  })
+}
+```
+
+They don't execute when they don't need to. 
+
+All Shiny guarantees is that that **when you ask a reactive expression for an answer, you will get an up to date one**. Don't ask it for more than this. 
+
+### Observers  
+
+1. It **can't be called** and **doesn't return a value**. The value of the last expression will be thrown away, as will values passed to `return()`.
+2. Its **eager**. When dependencies change, it runs right away.  
+3. Not cached, because there isn't a return value.  
+4. Its **reactive**. It is notified when its dependencies change and when that happens it is scheduled to run nearly immediately.  
+
+`reactive()` is for *calculating values without side effects* . The purpose is the calculate.  
+`observe()` is for *performing actions, with side effects*. The purpose is to take an action.   
+
+What kind of side effects?  
+- write to disk (like a save or upload button) 
+- setting reactive values (do not use a reactive to set reactive values)  
+- inside an observer, change input values
+
+> Keep your side effects  
+Outside of your reactives  
+Or I will kill you  
+>  
+> —Joe Cheng
+
+## Other topics  
+
+- `isolate` blocking activity  
+- `invalidateLater` time-based reactivity  
+- `validate` and `req` elegant mechanisms for dealing with missing inputs and failed preconditions.  
+- `shinySignals` higher order reactives  
+- `eventReactive` as `observe` is to `observeEvent` (implicit), `reactive` is to `eventReactive` (explicit)
+
+`req()` tells the app to stop, don't go further until you have a value for that input 
